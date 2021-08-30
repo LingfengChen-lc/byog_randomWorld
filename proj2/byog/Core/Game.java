@@ -21,7 +21,7 @@ public class Game {
     static public final int MAXEDGELEN = 15;
     static public final int MINEDGELEN = 4;
     TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
-    private static final int SEED = 4321;   // TOD: get user input/keyboard input
+    private static final int SEED = 63534;   // TOD: get user input/keyboard input
     private static final Random RANDOM = new Random(SEED);
 //    List<Room> ROOMS = new ArrayList<>();
 //    List<Hallway> HALLWAYS = new ArrayList<>();
@@ -275,7 +275,7 @@ public class Game {
         }
     }
 
-    public class LHallway extends Hallway{
+    public class LHallway extends Hallway {
         private Position elbowPos;
         int direction2;
         int length2;
@@ -289,6 +289,26 @@ public class Game {
             }
             length2 = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
             endPos = getEndPos(elbowPos, direction2, length2);
+        }
+    }
+
+    public class CrossHallway extends Hallway {
+        Hallway crossHallway;
+
+        public CrossHallway(Position pos, int direction, int length) {
+            super(pos, direction, length);
+            int length2 = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
+            int direction2;
+            Position startPos, endPos;
+            if (direction == UP || direction == DOWN) {
+                direction2 = RIGHT;
+                startPos = new Position(pos.x - length2 / 2, pos.y + length / 2);
+            } else {
+                direction2 = UP;
+                startPos = new Position(pos.x - length / 2, pos.y - length2 / 2);
+            }
+//            endPos = getEndPos(startPos, direction2, length2);
+            crossHallway = new Hallway(startPos, direction2, length2);
         }
     }
 
