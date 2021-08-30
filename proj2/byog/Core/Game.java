@@ -4,11 +4,9 @@ import byog.TileEngine.TERenderer;
 import byog.TileEngine.TETile;
 import byog.TileEngine.Tileset;
 
-import java.util.List;
 import java.util.ArrayList;
-
+import java.util.List;
 import java.util.Random;
-
 
 
 public class Game {
@@ -20,8 +18,9 @@ public class Game {
     static public final int RIGHT = 1;
     static public final int DOWN = 2;
     static public final int LEFT = 3;
+    static public final int MAXEDGELEN = 10;
     TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
-    private static final int SEED = 23452;   // TOD: get user input/keyboard input
+    private static final int SEED = 2134133242;   // TOD: get user input/keyboard input
     private static final Random RANDOM = new Random(SEED);
     List<Room> ROOMS = new ArrayList<>();
     List<Hallway> HALLWAYS = new ArrayList<>();
@@ -68,6 +67,7 @@ public class Game {
         // drawn if the same inputs had been given to playWithKeyboard().
 //        if (input.length())
 //        if (input.charAt(0) == '')
+        System.out.println("Input: " + input);
         ter.initialize(WIDTH, HEIGHT);
 //        TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
         for (int i = 0; i < WIDTH; i++) {
@@ -75,19 +75,59 @@ public class Game {
                 finalWorldFrame[i][j] = Tileset.NOTHING;
             }
         }
-        int roomNum = RandomUtils.uniform(RANDOM, 1, 10);
-        int hallwayNum = RandomUtils.uniform(RANDOM, roomNum - 1, 20);
+        int roomNum = 30;
+        int hallwayNum = 29;
+//        int roomNum = RandomUtils.uniform(RANDOM, 1, 5);
+//        int hallwayNum = RandomUtils.uniform(RANDOM, roomNum - 1, 10);
 
-
-        Room currentRoom = drawRandomRoom();
-        while (ROOMS.size() < roomNum || HALLWAYS.size() < hallwayNum) {
+        Room currentRoom = addRandomRoom();
+        currentRoom.drawRoom();
+        while (HALLWAYS.size() < hallwayNum || ROOMS.size() < roomNum) {
             Position edgePos = currentRoom.pickEdge();
-            int[] hallwayEndIndex = currentRoom.spawnHallway(edgePos);
-            currentRoom = drawRandomRoom(hallwayEndIndex[0], hallwayEndIndex[1]);
+            Hallway hallway = currentRoom.spawnHallway(edgePos);
+            if (!hallway.isValid()) {
+                continue;
+            }
+            hallway.drawHallway();
+            int width = RandomUtils.uniform(RANDOM, 4, MAXEDGELEN);
+            int height = RandomUtils.uniform(RANDOM, 4, MAXEDGELEN);
+            int offsetX = RandomUtils.uniform(RANDOM, 1, width - 1);
+            int offsetY = RandomUtils.uniform(RANDOM, 1, height - 1);
+            Position pos = switch (hallway.direction) {
+                case 0:
+                    yield new Position(hallway.endPos.x - offsetX, hallway.endPos.y);
+                case 1:
+                    yield new Position(hallway.endPos.x, hallway.endPos.y - height + 1);
+                case 2:
+                    yield new Position(hallway.endPos.x - offsetX, hallway.endPos.y - height + 1);
+                case 3:
+                    yield new Position(hallway.endPos.x - width + 1, hallway.endPos.y - offsetY);
+                default: throw new IllegalArgumentException("unexpected argument: " + hallway.direction);
+            };
+            Room tempRoom = addRoom(pos, width, height);
+            if (!tempRoom.isValid()) {
+                continue;
+            }
+            currentRoom = tempRoom;
+            ROOMS.add(currentRoom);
+            currentRoom.drawRoom();
         }
+
+//        for (int i = 0; i < roomNum; i++) {
+//            ROOMS.get(i).drawRoom();
+//        }
+        for (Hallway h : HALLWAYS) {
+            setTile(h.startPos, Tileset.SAND);
+            setTile(h.endPos, Tileset.FLOWER);
+        }
+
 
         ter.renderFrame(finalWorldFrame);
         return finalWorldFrame;
+    }
+
+    public void setTile(Position pos, TETile tile) {
+        finalWorldFrame[pos.x][pos.y] = tile;
     }
 
 
@@ -97,7 +137,7 @@ public class Game {
     public class Room {
         public Position pos;
         public int width, height;
-        public int direction = 0;
+        public int direction = -1;
 
         public Room (Position pos, int width, int height) {
             this.pos = pos;
@@ -111,18 +151,25 @@ public class Game {
             for (int i = x; i < x + width; i++) {
                 for (int j = y; j < y + height; j++) {
                     if (i == x || j == y || i == x + width - 1 || j == y + height - 1) {
-                        if (finalWorldFrame[i][j] == Tileset.WALL) {
-                            finalWorldFrame[i][j] = Tileset.FLOOR;;
-                        } else if (finalWorldFrame[i][j] != Tileset.FLOOR) {
+                        if (finalWorldFrame[i][j] == Tileset.FLOOR) {
+                            continue;
+                        } else {
                             finalWorldFrame[i][j] = Tileset.WALL;
                         }
+//                        if (finalWorldFrame[i][j] == Tileset.WALL) {
+//                            finalWorldFrame[i][j] = Tileset.FLOOR;;
+//                        } else if (finalWorldFrame[i][j] != Tileset.FLOOR) {
+//                            finalWorldFrame[i][j] = Tileset.WALL;
+//                        }
                     } else {
-                        if (finalWorldFrame[i][j] != Tileset.WALL) {
-                            finalWorldFrame[i][j] = Tileset.FLOOR;
-                        }
+//                        if (finalWorldFrame[i][j] != Tileset.WALL) {
+//                            finalWorldFrame[i][j] = Tileset.FLOOR;
+//                        }
+                        finalWorldFrame[i][j] = Tileset.FLOOR;
                     }
                 }
             }
+//            ROOMS.add(this);
         }
 
         /**
@@ -157,36 +204,34 @@ public class Game {
         }
 
         /**
-         * randomly pick an edge of the room and return the position, set the direction variable
+         * randomly pick an edge of the room and return the position, no corner should be picked by this function, set the direction variable
          * @return edge point position
          */
         private Position pickEdge() {
             int i = 0, j = 0;
             int x = pos.x, y = pos.y;
+//            int offsetX = RandomUtils.uniform(RANDOM, 1, width - 1);
+//            int offsetY = RandomUtils.uniform(RANDOM, 1, height - 1);
             if (RandomUtils.bernoulli(RANDOM)) {   // hallway on the left/right side
-                i = RandomUtils.bernoulli(RANDOM) ? x : x + width;
-                j = RandomUtils.uniform(RANDOM, y, y + height);
+                i = RandomUtils.bernoulli(RANDOM) ? x : x + width - 1;
+                j = RandomUtils.uniform(RANDOM, y + 1, y + height - 2);   // -2 because do not want edge
                 direction = i == x ? 3 : 1;
             } else {  // hallway on the top or bottom side
-                i = RandomUtils.uniform(RANDOM, x, x + width);
-                j = RandomUtils.bernoulli(RANDOM) ? y : y + height;
+                i = RandomUtils.uniform(RANDOM, x + 1, x + width - 2);
+                j = RandomUtils.bernoulli(RANDOM) ? y : y + height - 1;
                 direction = j == y ? 2 : 0;
             }
-            assert(x <= i && i <= x + width);
-            assert(y <= j && j <= y + height);
             return new Position(i, j);
         }
 
         /**
          * spawn a hallway connect with this room with specified direction and hallway length
          * @param edgePos is the position where the hallway starts
-         * @return the end index of the hallway
+         * @return the hallway object
          */
-        private int[] spawnHallway(Position edgePos) {
-            int direction = this.direction;
-            int len = RandomUtils.uniform(RANDOM, 4, 10);         // length of hallway
-//            new Hallway(edgePos, )
-            return null;
+        private Hallway spawnHallway(Position edgePos) {
+            int len = RandomUtils.uniform(RANDOM, 4, MAXEDGELEN);         // length of hallway
+            return new Hallway(edgePos, direction, len);       // the hallway preserves the direction variable of the room where the hallway is spawned from
 
             // ensures if room is on the corner+
             // param direction 0: up, 1: right, 2: down, 3: left
@@ -223,40 +268,24 @@ public class Game {
     }
 
     /**
-     * draw a random room in the world and return the room
-     * @return the room object if valid, null if not valid
+     * add a random room in the world and guarantee the room is a valid room
+     * @return the room object
      */
-    public Room drawRandomRoom() {
-        int i = RandomUtils.uniform(RANDOM, 0, WIDTH);
-        int j = RandomUtils.uniform(RANDOM, 0, HEIGHT);
-        int width = RandomUtils.uniform(RANDOM, 3, 10);
-        int height = RandomUtils.uniform(RANDOM, 3, 10);
-        Room room = new Room(new Position(i, j), width, height);
-        if (room.isValid()) {
-            ROOMS.add(room);
-            return room;
-        }
-        return null;
+    public Room addRandomRoom() {
+        int i = RandomUtils.uniform(RANDOM, 0, WIDTH - 8);
+        int j = RandomUtils.uniform(RANDOM, 0, HEIGHT - 8);
+        int width = RandomUtils.uniform(RANDOM, 4, 8);
+        int height = RandomUtils.uniform(RANDOM, 4, 8);
+        return new Room(new Position(i, j), width, height);
     }
 
     /**
-     * draw a random room in the world x index i and y index j, with random width and length
-     * @param i: x axis
-     * @param j: y axis
-     * @return room object if it is valid, null if it is not valid
+     * add a random room in the world x index i and y index j, with random width and length
+     * @param pos: position to add a room
+     * @return room object
      */
-    public Room drawRandomRoom(int i, int j) {
-        int width = RandomUtils.uniform(RANDOM, 3, WIDTH - i);
-        int height = RandomUtils.uniform(RANDOM, 3, HEIGHT - j);
-//        int offsetX = RandomUtils.uniform(RANDOM, 0, Math.min(width, i));  // I > offsetX
-//        int offsetY = RandomUtils.uniform(RANDOM, 0, Math.min(height, j));  // j > offsetY
-//        ROOMS.add(new Room(i - offsetX, j - offsetY, width, height));
-        Room room = new Room(new Position(i, j), width, height);
-        if (room.isValid()) {
-            ROOMS.add(room);
-            return room;
-        }
-        return null;
+    public Room addRoom(Position pos, int width, int height) {
+        return new Room(pos, width, height);
     }
 
     /**
@@ -285,58 +314,36 @@ public class Game {
         /**
          * add FLOOR Tile to the hallway, and enclose the edge with WALL tile if there is space
          */
-        private void addHallway() {
-            if (startPos.x == startPos.y) {
+        private void drawHallway() {
+            if (startPos.x == endPos.x) {   // vertical hallway
                 int x = startPos.x;
                 int yStart = direction == UP ? startPos.y : endPos.y;
                 int yEnd = direction == UP ? endPos.y : startPos.y;
-                for (int j = yStart; j < yEnd; j++) {
+                for (int j = Math.max(0, yStart); j <= yEnd; j++) {
                     finalWorldFrame[x][j] = Tileset.FLOOR;
-                    if (x - 1 >= 0) {
+                    if (x - 1 >= 0 && finalWorldFrame[x - 1][j] != Tileset.FLOOR) {
                         finalWorldFrame[x - 1][j] = Tileset.WALL;
                     }
-                    if (x + 1 < WIDTH) {
+                    if (x + 1 < WIDTH && finalWorldFrame[x + 1][j] != Tileset.FLOOR) {
                         finalWorldFrame[x + 1][j] = Tileset.WALL;
                     }
                 }
-            } else if (startPos.y == endPos.y){
+            } else if (startPos.y == endPos.y){  // horizontal hallway
                 int y = startPos.y;
-                int xStart = direction == RIGHT ? startPos.y : endPos.y;
-                int xEnd = direction == RIGHT ? endPos.y : startPos.y;
-                for (int i = xStart; i < xEnd; i++) {
+                int xStart = direction == RIGHT ? startPos.x : endPos.x;
+                int xEnd = direction == RIGHT ? endPos.x : startPos.x;
+                for (int i = Math.max(0, xStart); i <= xEnd; i++) {
                     finalWorldFrame[i][y] = Tileset.FLOOR;
-                    if (y - 1 >= 0) {
+                    if (y - 1 >= 0  && finalWorldFrame[i][y - 1] != Tileset.FLOOR) {
                         finalWorldFrame[i][y - 1] = Tileset.WALL;
                     }
-                    if (y + 1 < HEIGHT) {
+                    if (y + 1 < HEIGHT   && finalWorldFrame[i][y + 1] != Tileset.FLOOR) {
                         finalWorldFrame[i][y + 1] = Tileset.WALL;
                     }
                 }
             }
+            HALLWAYS.add(this);
         }
-
-
-
-
-//            for (int i = x; i < endPos.x; i++) {
-//                for (int j = y; j < endPos.y; j++) {
-//                    if (direction == UP) {
-//                        if (i == x + 1) {
-//                            finalWorldFrame[i][j] = finalWorldFrame[i][j] == Tileset.NOTHING && (j == y || j == y + height - 1) ? Tileset.WALL : Tileset.FLOOR;
-//                        } else if (finalWorldFrame[i][j] != Tileset.FLOOR) {
-//                            finalWorldFrame[i][j] = Tileset.WALL;
-//                        }
-//                    } else if (height == 3) {
-//                        if (j == y + 1) {
-//                            finalWorldFrame[i][j] = finalWorldFrame[i][j] == Tileset.NOTHING && (i == x || j == x + width - 1) ? Tileset.WALL : Tileset.FLOOR;
-//                        } else if (finalWorldFrame[i][j] != Tileset.FLOOR) {
-//                            finalWorldFrame[i][j] = Tileset.WALL;
-//                        }
-//                    }
-//                }
-//            }
-
-
 
         /**
          * tells if the hallway is valid or not
