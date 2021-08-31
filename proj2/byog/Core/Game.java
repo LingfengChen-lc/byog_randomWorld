@@ -16,8 +16,8 @@ public class Game {
     static public final int RIGHT = 1;
     static public final int DOWN = 2;
     static public final int LEFT = 3;
-    static public int ROOMNUM = 45;
-    static public int HALLWAYNUM = 44;
+    static public int ROOMNUM = 4;
+    static public int HALLWAYNUM = 2;
     static public final int MAXEDGELEN = 15;
     static public final int MINEDGELEN = 4;
     TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
@@ -80,37 +80,42 @@ public class Game {
 //        int hallwayNum = RandomUtils.uniform(RANDOM, roomNum - 1, 10);
 
         Room currentRoom = addRandomRoom();
-        currentRoom.drawRoom();
+        currentRoom.render();
         while (HALLWAYNUM > 0 || ROOMNUM > 0) {
             Position edgePos = currentRoom.pickEdge();
+            // this Hallway class might be a LHallway or CrossHallway
             Hallway hallway = currentRoom.spawnHallway(edgePos);
             if (!hallway.isValid()) {
                 continue;
             }
-            drawHallway(hallway.startPos, hallway.endPos, hallway.direction);
-            int width = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
-            int height = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
-            int offsetX = RandomUtils.uniform(RANDOM, 1, width - 1);
-            int offsetY = RandomUtils.uniform(RANDOM, 1, height - 1);
-            Position pos = switch (hallway.direction) {
-                case 0:
-                    yield new Position(hallway.endPos.x - offsetX, hallway.endPos.y);
-                case 1:
-                    yield new Position(hallway.endPos.x, hallway.endPos.y - offsetY);
-                case 2:
-                    yield new Position(hallway.endPos.x - offsetX, hallway.endPos.y - height + 1);
-                case 3:
-                    yield new Position(hallway.endPos.x - width + 1, hallway.endPos.y - offsetY);
-                default: throw new IllegalArgumentException("unexpected argument: " + hallway.direction);
-            };
-            Room tempRoom = addRoom(pos, width, height);
+            hallway.render();
+            Room tempRoom = spawnRoom(hallway);
             if (!tempRoom.isValid()) {
                 finalWorldFrame[hallway.endPos.x][hallway.endPos.y] = Tileset.WALL;     // enclose hallway near edge
                 continue;
             }
             currentRoom = tempRoom;
+//            if (hallway instanceof CrossHallway) {
+//                // two more rooms to add
+//                Hallway hallway2 = ((CrossHallway) hallway).hallway2;
+//                hallway2.render();
+//                Room tempRoom2 = spawnRoom(hallway2);
+//                if (!tempRoom2.isValid()) {
+//                    finalWorldFrame[hallway2.endPos.x][hallway2.endPos.y] = Tileset.WALL;     // enclose hallway near edge
+//                    continue;
+//                }
+//                tempRoom2.render();
+//                Hallway newHallway = new Hallway(hallway2.endPos, hallway2.startPos);
+//                Room tempRoom3 = spawnRoom(newHallway);
+//                if (!tempRoom3.isValid()) {
+//                    finalWorldFrame[newHallway.endPos.x][newHallway.endPos.y] = Tileset.WALL;     // enclose hallway near edge
+//                    continue;
+//                }
+//                tempRoom3.render();
+//                newHallway.render();
+//            }
 //            ROOMS.add(currentRoom);
-            currentRoom.drawRoom();
+            currentRoom.render();
         }
 
 //        for (int i = 0; i < roomNum; i++) {
@@ -130,6 +135,30 @@ public class Game {
         finalWorldFrame[pos.x][pos.y] = tile;
     }
 
+    /**
+     * spawn a room connected with the provided hallway with offset shifting around the endPos of the hallway
+     * @param hallway the Hallway object
+     * @return the Room object spawned
+     */
+    public Room spawnRoom(Hallway hallway) {
+        int width = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
+        int height = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
+        int offsetX = RandomUtils.uniform(RANDOM, 1, width - 1);
+        int offsetY = RandomUtils.uniform(RANDOM, 1, height - 1);
+        Position pos = switch (hallway.direction) {
+            case 0:
+                yield new Position(hallway.endPos.x - offsetX, hallway.endPos.y);
+            case 1:
+                yield new Position(hallway.endPos.x, hallway.endPos.y - offsetY);
+            case 2:
+                yield new Position(hallway.endPos.x - offsetX, hallway.endPos.y - height + 1);
+            case 3:
+                yield new Position(hallway.endPos.x - width + 1, hallway.endPos.y - offsetY);
+            default: throw new IllegalArgumentException("unexpected argument: " + hallway.direction);
+        };
+        return addRoom(pos, width, height);
+    }
+
 
     /**
      * The room class defines a self-enclosed space which ensures to have at least one hallway connecting to other rooms
@@ -145,22 +174,8 @@ public class Game {
             this.height = height;
         }
 
-        private void drawRoom() {
-            int x = pos.x, y = pos.y;
-            for (int i = x; i < x + width; i++) {
-                for (int j = y; j < y + height; j++) {
-                    if (i == x || j == y || i == x + width - 1 || j == y + height - 1) {
-                        if (finalWorldFrame[i][j] == Tileset.FLOOR) {
-                            continue;
-                        } else {
-                            finalWorldFrame[i][j] = Tileset.WALL;
-                        }
-                    } else {
-                        finalWorldFrame[i][j] = Tileset.FLOOR;
-                    }
-                }
-            }
-            ROOMNUM--;
+        public void render() {
+            drawRoom(this);
         }
 
         /**
@@ -216,12 +231,37 @@ public class Game {
         /**
          * spawn a hallway connect with this room with specified direction and hallway length
          * @param edgePos is the position where the hallway starts
-         * @return the hallway object
+         * @return the Hallway object
          */
         private Hallway spawnHallway(Position edgePos) {
             int len = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);         // length of hallway
-            return new Hallway(edgePos, direction, len);       // the hallway preserves the direction variable of the room where the hallway is spawned from
+            int hallwayType = RandomUtils.uniform(RANDOM, 2);
+            System.out.println(hallwayType);
+            if (hallwayType == 0) return new Hallway(edgePos, direction, len);   // the hallway preserves the direction variable of the room where the hallway is spawned from
+            else if (hallwayType == 1) return new LHallway(edgePos, direction, len);
+//            else return new CrossHallway(edgePos, direction, len);
+            return null;
         }
+    }
+
+
+    public void drawRoom(Room room) {
+        int width = room.width, height = room.height;
+        int x = room.pos.x, y = room.pos.y;
+        for (int i = x; i < x + width; i++) {
+            for (int j = y; j < y + height; j++) {
+                if (i == x || j == y || i == x + width - 1 || j == y + height - 1) {
+                    if (finalWorldFrame[i][j] == Tileset.FLOOR) {
+                        continue;
+                    } else {
+                        finalWorldFrame[i][j] = Tileset.WALL;
+                    }
+                } else {
+                    finalWorldFrame[i][j] = Tileset.FLOOR;
+                }
+            }
+        }
+        ROOMNUM--;
     }
 
     /**
@@ -251,20 +291,46 @@ public class Game {
     public class Hallway {
         Position startPos;
         Position endPos;
-        int direction, length;
+        int direction;
 
         public Hallway() {
             startPos = null;
             endPos = null;
             direction = -1;
-            length = 0;
+//            length = 0;
         }
 
         public Hallway(Position pos, int direction, int length) {
             this.startPos = pos;
             this.direction = direction;
-            this.length = length;
+//            this.length = length;
             endPos = getEndPos(pos, direction, length);
+        }
+
+        public Hallway(Position startPos, Position endPos) {
+            this.startPos = startPos;
+//            this.direction = direction;
+            if (endPos.x == startPos.x) {
+                if (endPos.y > startPos.y) {
+                    direction = UP;
+                } else {
+                    direction = DOWN;
+                }
+            } else {
+                if (endPos.x > startPos.x) {
+                    direction = RIGHT;
+                } else {
+                    direction = LEFT;
+                }
+            }
+            this.endPos = endPos;
+        }
+
+        /**
+         * directly call the drawHallway method on this object
+         */
+        public void render() {
+            drawHallway(this);
         }
         /**
          * tells if the hallway is valid or not
@@ -275,31 +341,51 @@ public class Game {
         }
     }
 
+    /**
+     * the L shaped Hallway, its arguments are startPos, elbowPos, and endPos
+     */
     public class LHallway extends Hallway {
-        private Position elbowPos;
-        int direction2;
-        int length2;
+        public Hallway hallway1;
+        public Hallway hallway2;
+
         public LHallway(Position pos, int direction, int length) {
             super(pos, direction, length);
-            elbowPos = endPos;
+            Position elbowPos = endPos;
+            int direction2;
             if (direction == UP || direction == DOWN) {
                 direction2 = RandomUtils.bernoulli(RANDOM) ? LEFT : RIGHT;
             } else {
                 direction2 = RandomUtils.bernoulli(RANDOM) ? UP : DOWN;
             }
-            length2 = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
+            int length2 = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
+            direction = direction2;
             endPos = getEndPos(elbowPos, direction2, length2);
+            hallway1 = new Hallway(pos, direction, length);
+            hallway2 = new Hallway(elbowPos, direction2, length2);
+        }
+
+        @Override
+        public void render() {
+            drawHallway(this.hallway1);
+            drawHallway(this.hallway2);
+        }
+
+        @Override
+        public boolean isValid() {
+            return hallway1.isValid() && hallway2.isValid();
         }
     }
 
-    public class CrossHallway extends Hallway {
-        Hallway crossHallway;
+    /**
+     * the + shaped hallway
+     */
+    public class CrossHallway extends LHallway {
 
         public CrossHallway(Position pos, int direction, int length) {
             super(pos, direction, length);
             int length2 = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
             int direction2;
-            Position startPos, endPos;
+            Position startPos;
             if (direction == UP || direction == DOWN) {
                 direction2 = RIGHT;
                 startPos = new Position(pos.x - length2 / 2, pos.y + length / 2);
@@ -307,9 +393,21 @@ public class Game {
                 direction2 = UP;
                 startPos = new Position(pos.x - length / 2, pos.y - length2 / 2);
             }
-//            endPos = getEndPos(startPos, direction2, length2);
-            crossHallway = new Hallway(startPos, direction2, length2);
+//            endPos = getEndPos(startPos, direction2, length2);    // set endPos as the cross hallway's endPos
+            endPos = getEndPos(pos, direction, length);
+            hallway1 = new Hallway(pos, direction, length);
+            hallway2 = new Hallway(startPos, direction2, length2);
         }
+//        @Override
+//        public void render() {
+//            drawHallway(this.hallway1);
+//            drawHallway(this.hallway2);
+//        }
+//
+//        @Override
+//        public boolean isValid() {
+//            return hallway1.isValid() && hallway2.isValid();
+//        }
     }
 
     public Position getEndPos(Position pos, int direction, int length) {
@@ -327,10 +425,10 @@ public class Game {
     /**
      * add FLOOR Tile to the hallway, and enclose the edge with WALL tile if there is space
      */
-    public void drawHallway(Position startPos, Position endPos, int direction) {
-//        Position startPos = hallway.startPos;
-//        Position endPos = hallway.endPos;
-//        int direction = hallway.direction;
+    public void drawHallway(Hallway hallway) {
+        Position startPos = hallway.startPos;
+        Position endPos = hallway.endPos;
+        int direction = hallway.direction;
         if (startPos.x == endPos.x) {   // vertical hallway
             int x = startPos.x;
             int yStart = direction == UP ? startPos.y : endPos.y;
