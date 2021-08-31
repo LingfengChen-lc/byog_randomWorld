@@ -16,12 +16,12 @@ public class Game {
     static public final int RIGHT = 1;
     static public final int DOWN = 2;
     static public final int LEFT = 3;
-    static public int ROOMNUM = 4;
-    static public int HALLWAYNUM = 2;
+    static public int ROOMNUM = 2;
+    static public int HALLWAYNUM = 1;
     static public final int MAXEDGELEN = 15;
     static public final int MINEDGELEN = 4;
     TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
-    private static final int SEED = 63534;   // TOD: get user input/keyboard input
+    private static final int SEED = 213;   // TOD: get user input/keyboard input
     private static final Random RANDOM = new Random(SEED);
 //    List<Room> ROOMS = new ArrayList<>();
 //    List<Hallway> HALLWAYS = new ArrayList<>();
@@ -36,6 +36,28 @@ public class Game {
         public Position(int x, int y) {
             this.x = x;
             this.y = y;
+        }
+
+        /**
+         * shift the Position along the direction by length n
+         * @param direction direction to shift the Position
+         * @param n number of distance from previous position
+         */
+        public void shift(int direction, int n) {
+            switch (direction) {
+                case UP:
+                    y += n;
+                    break;
+                case DOWN:
+                    y -= n;
+                    break;
+                case LEFT:
+                    x -= n;
+                    break;
+                case RIGHT:
+                    x += n;
+                    break;
+            }
         }
 
         public boolean isValid() {
@@ -89,6 +111,7 @@ public class Game {
                 continue;
             }
             hallway.render();
+
             Room tempRoom = spawnRoom(hallway);
             if (!tempRoom.isValid()) {
                 finalWorldFrame[hallway.endPos.x][hallway.endPos.y] = Tileset.WALL;     // enclose hallway near edge
@@ -236,11 +259,12 @@ public class Game {
         private Hallway spawnHallway(Position edgePos) {
             int len = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);         // length of hallway
             int hallwayType = RandomUtils.uniform(RANDOM, 2);
-            System.out.println(hallwayType);
+//            System.out.println(hallwayType);
             if (hallwayType == 0) return new Hallway(edgePos, direction, len);   // the hallway preserves the direction variable of the room where the hallway is spawned from
             else if (hallwayType == 1) return new LHallway(edgePos, direction, len);
 //            else return new CrossHallway(edgePos, direction, len);
-            return null;
+//            return null;
+            return new Hallway(edgePos, direction, len);
         }
     }
 
@@ -367,7 +391,13 @@ public class Game {
         @Override
         public void render() {
             drawHallway(this.hallway1);
+//            System.out.println(hallway2.startPos.x);
+//            System.out.println(hallway2.startPos.y);
+            hallway2.startPos.shift(oppoDir(direction), 1);
+//            System.out.println(hallway2.startPos.x);
+//            System.out.println(hallway2.startPos.y);
             drawHallway(this.hallway2);
+            setTile(this.hallway2.startPos, Tileset.WALL);
         }
 
         @Override
@@ -408,6 +438,16 @@ public class Game {
 //        public boolean isValid() {
 //            return hallway1.isValid() && hallway2.isValid();
 //        }
+    }
+
+    public int oppoDir(int dir) {
+        switch (dir) {
+            case UP: return DOWN;
+            case DOWN: return UP;
+            case LEFT: return RIGHT;
+            case RIGHT: return LEFT;
+            default: throw new IllegalArgumentException("unexpected direction: " + dir);
+        }
     }
 
     public Position getEndPos(Position pos, int direction, int length) {
