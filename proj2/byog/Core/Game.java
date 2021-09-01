@@ -3,67 +3,25 @@ package byog.Core;
 import byog.TileEngine.TERenderer;
 import byog.TileEngine.TETile;
 import byog.TileEngine.Tileset;
-
 import java.util.Random;
-
 
 public class Game {
     TERenderer ter = new TERenderer();
-    /* Feel free to change the width and height. */
-    public static final int WIDTH = 80;
-    public static final int HEIGHT = 60;
+    static public final int WIDTH = 80;
+    static public final int HEIGHT = 60;
     static public final int UP = 0;
     static public final int RIGHT = 1;
     static public final int DOWN = 2;
     static public final int LEFT = 3;
-    static public int ROOMNUM = 2;
-    static public int HALLWAYNUM = 1;
     static public final int MAXEDGELEN = 15;
     static public final int MINEDGELEN = 4;
-    TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
-    private static final int SEED = 213;   // TOD: get user input/keyboard input
-    private static final Random RANDOM = new Random(SEED);
-//    List<Room> ROOMS = new ArrayList<>();
-//    List<Hallway> HALLWAYS = new ArrayList<>();
-
-    /**
-     * Position on the map which contains a x coordinate and y coordinate
-     */
-    public static class Position {
-        int x;
-        int y;
-
-        public Position(int x, int y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        /**
-         * shift the Position along the direction by length n
-         * @param direction direction to shift the Position
-         * @param n number of distance from previous position
-         */
-        public void shift(int direction, int n) {
-            switch (direction) {
-                case UP:
-                    y += n;
-                    break;
-                case DOWN:
-                    y -= n;
-                    break;
-                case LEFT:
-                    x -= n;
-                    break;
-                case RIGHT:
-                    x += n;
-                    break;
-            }
-        }
-
-        public boolean isValid() {
-            return 0 <= x && x < WIDTH && 0 <= y && y < HEIGHT;
-        }
-    }
+    static TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
+    static public final int SEED = 12231;   // TOD: get user input/keyboard input
+    static public final Random RANDOM = new Random(SEED);
+    static public int ROOMNUM;
+    static public int HALLWAYNUM;
+    public int MAXROOMNUM = 30;
+    public int MAXHALLWAYNUM = 30;
 
     /**
      * Method used for playing a fresh game. The game should start from the main menu.
@@ -90,71 +48,59 @@ public class Game {
         // drawn if the same inputs had been given to playWithKeyboard().
 //        if (input.length())
 //        if (input.charAt(0) == '')
-        System.out.println("Input: " + input);
+//        System.out.println("Input: " + input);
         ter.initialize(WIDTH, HEIGHT);
-//        TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
         for (int i = 0; i < WIDTH; i++) {
             for (int j = 0; j < HEIGHT; j++) {
                 finalWorldFrame[i][j] = Tileset.NOTHING;
             }
         }
-//        int roomNum = RandomUtils.uniform(RANDOM, 1, 5);
-//        int hallwayNum = RandomUtils.uniform(RANDOM, roomNum - 1, 10);
+        ROOMNUM = RandomUtils.uniform(RANDOM, 15, MAXROOMNUM);
+        HALLWAYNUM = RandomUtils.uniform(RANDOM, ROOMNUM - 1, MAXROOMNUM);
 
         Room currentRoom = addRandomRoom();
         currentRoom.render();
         while (HALLWAYNUM > 0 || ROOMNUM > 0) {
             Position edgePos = currentRoom.pickEdge();
-            // this Hallway class might be a LHallway or CrossHallway
+            // this Hallway class might be a LHallway or CrossHallway (LHallway for now)
             Hallway hallway = currentRoom.spawnHallway(edgePos);
             if (!hallway.isValid()) {
                 continue;
             }
             hallway.render();
-
             Room tempRoom = spawnRoom(hallway);
             if (!tempRoom.isValid()) {
-                finalWorldFrame[hallway.endPos.x][hallway.endPos.y] = Tileset.WALL;     // enclose hallway near edge
+                setTile(hallway.endPos, Tileset.WALL);          // enclose hallway near edge
                 continue;
             }
             currentRoom = tempRoom;
-//            if (hallway instanceof CrossHallway) {
-//                // two more rooms to add
-//                Hallway hallway2 = ((CrossHallway) hallway).hallway2;
-//                hallway2.render();
-//                Room tempRoom2 = spawnRoom(hallway2);
-//                if (!tempRoom2.isValid()) {
-//                    finalWorldFrame[hallway2.endPos.x][hallway2.endPos.y] = Tileset.WALL;     // enclose hallway near edge
-//                    continue;
-//                }
-//                tempRoom2.render();
-//                Hallway newHallway = new Hallway(hallway2.endPos, hallway2.startPos);
-//                Room tempRoom3 = spawnRoom(newHallway);
-//                if (!tempRoom3.isValid()) {
-//                    finalWorldFrame[newHallway.endPos.x][newHallway.endPos.y] = Tileset.WALL;     // enclose hallway near edge
-//                    continue;
-//                }
-//                tempRoom3.render();
-//                newHallway.render();
-//            }
+            if (hallway instanceof CrossHallway) {
+                // two more rooms to add
+                Hallway hallway2 = ((CrossHallway) hallway).hallway2;
+                hallway2.render();
+                Room tempRoom2 = spawnRoom(hallway2);
+                if (!tempRoom2.isValid()) {
+                    setTile(hallway2.endPos, Tileset.WALL);     // enclose hallway near edge
+                    continue;
+                }
+                tempRoom2.render();
+                Hallway newHallway = new Hallway(hallway2.endPos, hallway2.startPos);
+                Room tempRoom3 = spawnRoom(newHallway);
+                if (!tempRoom3.isValid()) {
+                    setTile(newHallway.endPos, Tileset.WALL);;     // enclose hallway near edge
+                    continue;
+                }
+                tempRoom3.render();
+            }
 //            ROOMS.add(currentRoom);
             currentRoom.render();
         }
-
-//        for (int i = 0; i < roomNum; i++) {
-//            ROOMS.get(i).drawRoom();
-//        }
-//        for (Hallway h : HALLWAYS) {
-//            setTile(h.startPos, Tileset.SAND);
-//            setTile(h.endPos, Tileset.FLOWER);
-//        }
-
 
         ter.renderFrame(finalWorldFrame);
         return finalWorldFrame;
     }
 
-    public void setTile(Position pos, TETile tile) {
+    static public void setTile(Position pos, TETile tile) {
         finalWorldFrame[pos.x][pos.y] = tile;
     }
 
@@ -259,12 +205,9 @@ public class Game {
         private Hallway spawnHallway(Position edgePos) {
             int len = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);         // length of hallway
             int hallwayType = RandomUtils.uniform(RANDOM, 2);
-//            System.out.println(hallwayType);
             if (hallwayType == 0) return new Hallway(edgePos, direction, len);   // the hallway preserves the direction variable of the room where the hallway is spawned from
             else if (hallwayType == 1) return new LHallway(edgePos, direction, len);
-//            else return new CrossHallway(edgePos, direction, len);
-//            return null;
-            return new Hallway(edgePos, direction, len);
+            else return new CrossHallway(edgePos, direction, len);
         }
     }
 
@@ -310,137 +253,11 @@ public class Game {
     }
 
     /**
-     * This Hallway class is designed to avoid building WALLS inside rooms
+     * gives back the opposite direction as the argument
+     * @param dir given direction
+     * @return opposite direction
      */
-    public class Hallway {
-        Position startPos;
-        Position endPos;
-        int direction;
-
-        public Hallway() {
-            startPos = null;
-            endPos = null;
-            direction = -1;
-//            length = 0;
-        }
-
-        public Hallway(Position pos, int direction, int length) {
-            this.startPos = pos;
-            this.direction = direction;
-//            this.length = length;
-            endPos = getEndPos(pos, direction, length);
-        }
-
-        public Hallway(Position startPos, Position endPos) {
-            this.startPos = startPos;
-//            this.direction = direction;
-            if (endPos.x == startPos.x) {
-                if (endPos.y > startPos.y) {
-                    direction = UP;
-                } else {
-                    direction = DOWN;
-                }
-            } else {
-                if (endPos.x > startPos.x) {
-                    direction = RIGHT;
-                } else {
-                    direction = LEFT;
-                }
-            }
-            this.endPos = endPos;
-        }
-
-        /**
-         * directly call the drawHallway method on this object
-         */
-        public void render() {
-            drawHallway(this);
-        }
-        /**
-         * tells if the hallway is valid or not
-         * @return true or false
-         */
-        public boolean isValid() {
-            return startPos.isValid() && endPos.isValid();
-        }
-    }
-
-    /**
-     * the L shaped Hallway, its arguments are startPos, elbowPos, and endPos
-     */
-    public class LHallway extends Hallway {
-        public Hallway hallway1;
-        public Hallway hallway2;
-
-        public LHallway(Position pos, int direction, int length) {
-            super(pos, direction, length);
-            Position elbowPos = endPos;
-            int direction2;
-            if (direction == UP || direction == DOWN) {
-                direction2 = RandomUtils.bernoulli(RANDOM) ? LEFT : RIGHT;
-            } else {
-                direction2 = RandomUtils.bernoulli(RANDOM) ? UP : DOWN;
-            }
-            int length2 = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
-            direction = direction2;
-            endPos = getEndPos(elbowPos, direction2, length2);
-            hallway1 = new Hallway(pos, direction, length);
-            hallway2 = new Hallway(elbowPos, direction2, length2);
-        }
-
-        @Override
-        public void render() {
-            drawHallway(this.hallway1);
-//            System.out.println(hallway2.startPos.x);
-//            System.out.println(hallway2.startPos.y);
-            hallway2.startPos.shift(oppoDir(direction), 1);
-//            System.out.println(hallway2.startPos.x);
-//            System.out.println(hallway2.startPos.y);
-            drawHallway(this.hallway2);
-            setTile(this.hallway2.startPos, Tileset.WALL);
-        }
-
-        @Override
-        public boolean isValid() {
-            return hallway1.isValid() && hallway2.isValid();
-        }
-    }
-
-    /**
-     * the + shaped hallway
-     */
-    public class CrossHallway extends LHallway {
-
-        public CrossHallway(Position pos, int direction, int length) {
-            super(pos, direction, length);
-            int length2 = RandomUtils.uniform(RANDOM, MINEDGELEN, MAXEDGELEN);
-            int direction2;
-            Position startPos;
-            if (direction == UP || direction == DOWN) {
-                direction2 = RIGHT;
-                startPos = new Position(pos.x - length2 / 2, pos.y + length / 2);
-            } else {
-                direction2 = UP;
-                startPos = new Position(pos.x - length / 2, pos.y - length2 / 2);
-            }
-//            endPos = getEndPos(startPos, direction2, length2);    // set endPos as the cross hallway's endPos
-            endPos = getEndPos(pos, direction, length);
-            hallway1 = new Hallway(pos, direction, length);
-            hallway2 = new Hallway(startPos, direction2, length2);
-        }
-//        @Override
-//        public void render() {
-//            drawHallway(this.hallway1);
-//            drawHallway(this.hallway2);
-//        }
-//
-//        @Override
-//        public boolean isValid() {
-//            return hallway1.isValid() && hallway2.isValid();
-//        }
-    }
-
-    public int oppoDir(int dir) {
+    static public int oppoDir(int dir) {
         switch (dir) {
             case UP: return DOWN;
             case DOWN: return UP;
@@ -450,7 +267,14 @@ public class Game {
         }
     }
 
-    public Position getEndPos(Position pos, int direction, int length) {
+    /**
+     * calculate the endPosition, starting from the given position, and walk k steps through the given direction
+     * @param pos start position
+     * @param direction direction to move
+     * @param length k steps
+     * @return the end position
+     */
+    static public Position getEndPos(Position pos, int direction, int length) {
         Position endPos = switch (direction) {
             case UP -> new Position(pos.x, pos.y + length);
             case RIGHT -> new Position(pos.x + length, pos.y);
@@ -465,7 +289,7 @@ public class Game {
     /**
      * add FLOOR Tile to the hallway, and enclose the edge with WALL tile if there is space
      */
-    public void drawHallway(Hallway hallway) {
+    static public void drawHallway(Hallway hallway) {
         Position startPos = hallway.startPos;
         Position endPos = hallway.endPos;
         int direction = hallway.direction;
