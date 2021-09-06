@@ -16,8 +16,8 @@ public class Game {
     static public final int MAXEDGELEN = 15;
     static public final int MINEDGELEN = 4;
     static TETile[][] finalWorldFrame = new TETile[WIDTH][HEIGHT];
-    static public final int SEED = 12231;   // TOD: get user input/keyboard input
-    static public final Random RANDOM = new Random(SEED);
+//    static public final int SEED = 12231;   // TOD: get user input/keyboard input
+    static public Random RANDOM;
     static public int ROOMNUM;
     static public int HALLWAYNUM;
     public int MAXROOMNUM = 30;
@@ -43,13 +43,15 @@ public class Game {
      * @return the 2D TETile[][] representing the state of the world
      */
     public TETile[][] playWithInputString(String input) {
-        // TODO: Fill out this method to run the game using the input passed in,
-        // and return a 2D tile representation of the world that would have been
-        // drawn if the same inputs had been given to playWithKeyboard().
+
 //        if (input.length())
 //        if (input.charAt(0) == '')
 //        System.out.println("Input: " + input);
-        ter.initialize(WIDTH, HEIGHT);
+
+        ter.initialize(WIDTH + 10, HEIGHT + 10, 5, 5);
+        long SEED = ter.renderMenu();
+        RANDOM = new Random(SEED);
+
         for (int i = 0; i < WIDTH; i++) {
             for (int j = 0; j < HEIGHT; j++) {
                 finalWorldFrame[i][j] = Tileset.NOTHING;

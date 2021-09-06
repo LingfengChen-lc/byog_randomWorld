@@ -87,6 +87,7 @@ public class TERenderer {
         int numXTiles = world.length;
         int numYTiles = world[0].length;
         StdDraw.clear(new Color(0, 0, 0));
+        StdDraw.setFont(new Font("Monaco", Font.BOLD, TILE_SIZE - 2));
         for (int x = 0; x < numXTiles; x += 1) {
             for (int y = 0; y < numYTiles; y += 1) {
                 if (world[x][y] == null) {
@@ -96,6 +97,109 @@ public class TERenderer {
                 world[x][y].draw(x + xOffset, y + yOffset);
             }
         }
+        StdDraw.show();
+    }
+
+    /**
+     * return a user input seed if press S, return a loaded seed if press L, safely exit program if press Q
+     * @return seed
+     */
+    public long renderMenu() {
+        StdDraw.clear();
+        StdDraw.clear(new Color(0,0,0));
+        StdDraw.setPenColor(new Color(7, 77, 199));
+        StdDraw.setFont(new Font("Monaco", Font.BOLD, 30));
+        StdDraw.text(width / 2.0, height / 2.0 + 10, "Welcome to Liam's Game!");
+        StdDraw.text(width / 2.0, height / 2.0, "Press A Bottom");
+        StdDraw.text(width / 2.0, height / 2.0 - 10, "Start Game (S)");
+        StdDraw.text(width / 2.0, height / 2.0 - 20, "Load Game (L)");
+        StdDraw.text(width / 2.0, height / 2.0 - 30, "Quit (Q)");
+        StdDraw.show();
+        String seed = "";
+        boolean inMenu = true;
+        while (inMenu) {
+            String action = solicitInput(1);
+            switch (action) {
+                case "q":
+                case "Q":
+                    System.exit(0);
+                case "l":
+                case "L":
+                    // TODO: load the game
+                    break;
+                case "s":
+                case "S":
+                    seed = solicitSeed();
+                    inMenu = false;
+                    break;
+                default: continue;
+            }
+        }
+
+        return Long.valueOf(seed);
+    }
+
+    /**
+     * solicit input from user with length n
+     * @param n length of input
+     * @return the input string
+     */
+    public String solicitInput(int n) {
+        StringBuilder sb = new StringBuilder();
+        while (n > 0) {
+            if (StdDraw.hasNextKeyTyped()) {
+                n--;
+                sb.append(StdDraw.nextKeyTyped());
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * solicit an array of numerical digits with unknown length from user and range[0, Long.MAX_VALUE];
+     * @return the input numerical seed
+     */
+    public String solicitSeed() {
+        StringBuilder sb = new StringBuilder();
+        StdDraw.clear(new Color(0, 0, 0));
+        StdDraw.text(width / 2.0, height / 2.0 + 10.0, "Type Away!");
+        StdDraw.show();
+        while (sb.toString().equals("") || (Long.valueOf(sb.toString())) <= Long.MAX_VALUE) {
+            if (StdDraw.hasNextKeyTyped()) {
+                char nextChar = StdDraw.nextKeyTyped();
+                if (nextChar != '\n') {
+                    sb.append(nextChar);
+//                    try (Long.valueOf(sb.toString())) {
+//                        catch ()
+//                    }
+                    StdDraw.clear(new Color(0, 0, 0));
+                    StdDraw.text(width / 2.0, height / 2.0 + 10.0, "Type Away!");
+                    StdDraw.text(width / 2.0, height / 2.0, sb.toString());
+                    StdDraw.show();
+                } else {
+                    break;
+                }
+            }
+        }
+//        System.out.println("im out");
+        return sb.toString();
+    }
+
+    /**
+     * draws one frame with argument string
+     * @param s string to draw in the center of the screen
+     */
+    public void drawFrame(String s) {
+        drawFrame(width /  2.0, height / 2.0, s);
+    }
+
+    /**
+     * draws one frame with argument string
+     * @param s string to draw in the center of the screen
+     */
+    public void drawFrame(double x, double y, String s) {
+        StdDraw.clear(Color.black);
+        StdDraw.text(x, y, s);
         StdDraw.show();
     }
 }
